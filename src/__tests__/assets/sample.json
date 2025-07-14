@@ -1,0 +1,19 @@
+{
+  "name": "MediaClipboard Test File",
+  "version": "1.0.0",
+  "description": "Sample JSON file for testing MediaClipboard library",
+  "features": [
+    "Text copying",
+    "Image copying",
+    "Video copying",
+    "PDF copying",
+    "Audio copying",
+    "File copying"
+  ],
+  "metadata": {
+    "created": "2024-01-01",
+    "author": "duonguyen321",
+    "fileSize": "small",
+    "testPurpose": "integration_testing"
+  }
+}

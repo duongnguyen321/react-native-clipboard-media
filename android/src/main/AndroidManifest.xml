@@ -1,0 +1,20 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+  package="com.mediaclipboard">
+
+  <!-- Permissions for reading external storage (optional) -->
+  <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+
+  <application>
+    <!-- File provider for sharing files securely -->
+    <provider
+      android:name="androidx.core.content.FileProvider"
+      android:authorities="${applicationId}.mediaclipboard.fileprovider"
+      android:exported="false"
+      android:grantUriPermissions="true">
+      <meta-data
+        android:name="android.support.FILE_PROVIDER_PATHS"
+        android:resource="@xml/file_provider_paths" />
+    </provider>
+  </application>
+
+</manifest> 

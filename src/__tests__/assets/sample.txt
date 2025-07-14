@@ -1,0 +1,10 @@
+This is a sample text file for testing the MediaClipboard library.
+It contains multiple lines of text to test text copying functionality.
+
+Features:
+- Text copying
+- URL copying
+- Multi-line content
+- Special characters: àáâãäåæçèéêë
+- Numbers: 123456789
+- Symbols: !@#$%^&*()_+-=[]{}|;:'"<>?,./
