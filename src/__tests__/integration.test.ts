@@ -56,7 +56,7 @@ describe('MediaClipboard Integration Tests', () => {
 
     it('should copy URL content', async () => {
       const testUrl =
-        'https://github.com/duonguyen321/react-native-media-clipboard';
+        'https://github.com/duonguyen321/react-native-clipboard-media';
 
       await MediaClipboard.copyText(testUrl);
 

@@ -20,13 +20,13 @@ A comprehensive React Native library for copying various media types (text, imag
 
 ```bash
 # Using npm
-npm install react-native-media-clipboard
+npm install react-native-clipboard-media
 
 # Using yarn
-yarn add react-native-media-clipboard
+yarn add react-native-clipboard-media
 
 # Using bun
-bun add react-native-media-clipboard
+bun add react-native-clipboard-media
 ```
 
 ### iOS Setup
@@ -42,7 +42,7 @@ No additional setup required. The library uses autolinking.
 ## 🎯 Quick Start
 
 ```typescript
-import MediaClipboard from 'react-native-media-clipboard';
+import MediaClipboard from 'react-native-clipboard-media';
 
 // Copy text
 await MediaClipboard.copyText('Hello, World!');
@@ -291,7 +291,7 @@ type ProgressCallback = (progress: number) => void;
 ### Basic Text and URL Copying
 
 ```typescript
-import MediaClipboard from 'react-native-media-clipboard';
+import MediaClipboard from 'react-native-clipboard-media';
 
 // Copy simple text
 await MediaClipboard.copyText('Hello, React Native!');
@@ -430,7 +430,7 @@ try {
 ```typescript
 import React, { useState } from 'react';
 import { View, Button, Text, Alert } from 'react-native';
-import MediaClipboard from 'react-native-media-clipboard';
+import MediaClipboard from 'react-native-clipboard-media';
 
 const ClipboardDemo = () => {
   const [hasContent, setHasContent] = useState(false);

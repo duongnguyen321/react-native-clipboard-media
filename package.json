@@ -12,7 +12,7 @@
     "ios",
     "src",
     "index.js",
-    "react-native-media-clipboard.podspec"
+    "react-native-clipboard-media.podspec"
   ],
   "scripts": {
     "test": "NODE_ENV=test jest",
@@ -42,14 +42,14 @@
   ],
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/duonguyen321/react-native-media-clipboard.git"
+    "url": "git+https://github.com/duonguyen321/react-native-clipboard-media.git"
   },
   "author": "duonguyen321 <duongcoilc2004@gmail.com> (https://duonguyen.site)",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/duonguyen321/react-native-media-clipboard/issues"
+    "url": "https://github.com/duonguyen321/react-native-clipboard-media/issues"
   },
-  "homepage": "https://github.com/duonguyen321/react-native-media-clipboard#readme",
+  "homepage": "https://github.com/duonguyen321/react-native-clipboard-media#readme",
   "publishConfig": {
     "registry": "https://registry.npmjs.org/"
   },

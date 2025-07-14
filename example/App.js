@@ -10,7 +10,7 @@ import {
   TextInput,
 } from 'react-native';
 
-import MediaClipboard from 'react-native-media-clipboard';
+import MediaClipboard from 'react-native-clipboard-media';
 
 const App = () => {
   const [textInput, setTextInput] = useState('Hello, World!');
