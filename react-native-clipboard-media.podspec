@@ -20,6 +20,9 @@ Pod::Spec.new do |s|
 
   s.dependency "React-Core"
   
+  # Configure as static framework to support Swift with module maps
+  s.static_framework = true
+  
   # Enable module maps for better Swift integration
   s.module_map = 'ios/MediaClipboard.modulemap'
   

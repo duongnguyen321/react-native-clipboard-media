@@ -1,6 +1,6 @@
 {
   "name": "react-native-clipboard-media",
-  "version": "0.0.1-beta.2",
+  "version": "0.0.1-beta.5",
   "description": "A React Native library for copying various media types (text, images, videos, PDFs, audio, files) to the clipboard on both iOS and Android",
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
