@@ -9,16 +9,40 @@ const LINKING_ERROR =
   '- You rebuilt the app after installing the package\n' +
   '- You are not using Expo Go\n';
 
-const MediaClipboardModule = NativeModules.MediaClipboard
-  ? NativeModules.MediaClipboard
-  : new Proxy(
+// Check if we're running on web platform
+const isWeb = Platform.OS === 'web';
+
+let MediaClipboardModule: any;
+
+if (isWeb) {
+  // Dynamically import web implementation for web platform
+  try {
+    const { MediaClipboardWeb } = require('./web/MediaClipboardWeb');
+    MediaClipboardModule = new MediaClipboardWeb();
+  } catch (error) {
+    console.error('Failed to load web clipboard implementation:', error);
+    MediaClipboardModule = new Proxy(
       {},
       {
         get() {
-          throw new Error(LINKING_ERROR);
+          throw new Error('Web clipboard implementation failed to load');
         },
       },
     );
+  }
+} else {
+  // Use native module for iOS/Android
+  MediaClipboardModule = NativeModules.MediaClipboard
+    ? NativeModules.MediaClipboard
+    : new Proxy(
+        {},
+        {
+          get() {
+            throw new Error(LINKING_ERROR);
+          },
+        },
+      );
+}
 
 /**
  * Content type enumeration for clipboard content

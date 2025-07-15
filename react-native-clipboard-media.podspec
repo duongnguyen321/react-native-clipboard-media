@@ -15,14 +15,8 @@ Pod::Spec.new do |s|
   s.platforms    = { :ios => "11.0" }
   s.source       = { :git => "https://github.com/duonguyen321/react-native-clipboard-media.git", :tag => "#{s.version}" }
 
-  s.source_files = "ios/**/*.{h,c,cc,cpp,m,mm,swift}"
+  s.source_files = "ios/**/*.{h,c,cc,cpp,m,mm}"
   s.requires_arc = true
 
   s.dependency "React-Core"
-  
-  # Define the Swift version
-  s.swift_version = "5.0"
-  
-  # Define module name for Swift bridging header
-  s.module_name = "ReactNativeClipboardMedia"
 end 

@@ -33,9 +33,26 @@ export interface CopyFileOptions {
  */
 export type ProgressCallback = (progress: number) => void;
 /**
+ * Permission status interface
+ */
+export interface PermissionStatus {
+    granted: boolean;
+    status: string;
+}
+/**
  * MediaClipboard API interface
  */
 export interface MediaClipboardInterface {
+    /**
+     * Request required permissions for clipboard operations
+     * @returns Promise that resolves to true if permissions granted
+     */
+    requestPermissions(): Promise<boolean>;
+    /**
+     * Check current permission status
+     * @returns Promise that resolves to permission status
+     */
+    checkPermissions(): Promise<PermissionStatus>;
     /**
      * Copy text or URL to clipboard
      * @param text The text or URL to copy
@@ -107,6 +124,8 @@ export interface MediaClipboardInterface {
  * MediaClipboard implementation
  */
 declare class MediaClipboard implements MediaClipboardInterface {
+    requestPermissions(): Promise<boolean>;
+    checkPermissions(): Promise<PermissionStatus>;
     copyText(text: string): Promise<void>;
     copyImage(imagePath: string, options?: CopyFileOptions): Promise<void>;
     copyVideo(videoPath: string, options?: CopyFileOptions): Promise<void>;
