@@ -1,6 +1,6 @@
 {
   "name": "react-native-clipboard-media",
-  "version": "0.0.1-beta.13",
+  "version": "0.0.1-beta.16",
   "description": "A React Native library for copying various media types (text, images, videos, PDFs, audio, files) to the clipboard on both iOS and Android",
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
@@ -16,7 +16,11 @@
   ],
   "scripts": {
     "test": "NODE_ENV=test jest",
-    "test:bun": "bun test",
+    "test:watch": "NODE_ENV=test jest --watch",
+    "test:coverage": "NODE_ENV=test jest --coverage",
+    "test:native": "./scripts/test-native.sh",
+    "test:ios": "./scripts/test-ios.sh",
+    "test:android": "./scripts/test-android.sh",
     "type-check": "tsc --noEmit",
     "lint": "eslint \"**/*.{js,ts,tsx}\"",
     "lint:fix": "eslint \"**/*.{js,ts,tsx}\" --fix",
@@ -81,10 +85,5 @@
   "engines": {
     "node": ">=16"
   },
-  "packageManager": "bun@1.0.0",
-  "codegenConfig": {
-    "name": "RNMediaClipboardSpec",
-    "type": "modules",
-    "jsSrcsDir": "src"
-  }
+  "packageManager": "bun@1.0.0"
 }
