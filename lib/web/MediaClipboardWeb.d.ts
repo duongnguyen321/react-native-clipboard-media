@@ -11,21 +11,6 @@ export declare class MediaClipboardWeb implements MediaClipboardInterface {
      * Check if advanced clipboard features are available (images, etc.)
      */
     private isAdvancedClipboardApiAvailable;
-    /**
-     * Check if we're in a secure context (required for Clipboard API)
-     */
-    private isSecureContext;
-    /**
-     * Request clipboard permissions
-     */
-    requestPermissions(): Promise<boolean>;
-    /**
-     * Check clipboard permissions
-     */
-    checkPermissions(): Promise<{
-        granted: boolean;
-        status: string;
-    }>;
     copyText(text: string): Promise<void>;
     copyImage(imagePath: string, _options?: CopyFileOptions): Promise<void>;
     copyVideo(videoPath: string, _options?: CopyFileOptions): Promise<void>;
