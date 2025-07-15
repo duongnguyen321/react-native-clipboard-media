@@ -1,10 +1,10 @@
 #import "MediaClipboard.h"
 #import <React/RCTLog.h>
 
-#if __has_include("react_native_media_clipboard-Swift.h")
-#import "react_native_media_clipboard-Swift.h"
+#if __has_include("ReactNativeClipboardMedia-Swift.h")
+#import "ReactNativeClipboardMedia-Swift.h"
 #else
-#import <react_native_media_clipboard/react_native_media_clipboard-Swift.h>
+#import <ReactNativeClipboardMedia/ReactNativeClipboardMedia-Swift.h>
 #endif
 
 @interface MediaClipboard() <MediaClipboardSwiftDelegate>
@@ -24,7 +24,7 @@ RCT_EXPORT_MODULE()
   self = [super init];
   if (self) {
     // Initialize the Swift implementation
-    [MediaClipboardSwift.shared setDelegate:self];
+    [[MediaClipboardSwift shared] setDelegate:self];
   }
   return self;
 }
@@ -35,7 +35,7 @@ RCT_EXPORT_METHOD(copyText:(NSString *)text
                  withResolver:(RCTPromiseResolveBlock)resolve
                  withRejecter:(RCTPromiseRejectBlock)reject)
 {
-  [MediaClipboardSwift.shared copyText:text
+  [[MediaClipboardSwift shared] copyText:text
                             completion:^(NSError * _Nullable error) {
     if (error) {
       reject(@"COPY_TEXT_ERROR", error.localizedDescription, error);
@@ -50,7 +50,7 @@ RCT_EXPORT_METHOD(copyImage:(NSString *)imagePath
                  withResolver:(RCTPromiseResolveBlock)resolve
                  withRejecter:(RCTPromiseRejectBlock)reject)
 {
-  [MediaClipboardSwift.shared copyImage:imagePath
+  [[MediaClipboardSwift shared] copyImage:imagePath
                                 options:options
                              completion:^(NSError * _Nullable error) {
     if (error) {
@@ -66,7 +66,7 @@ RCT_EXPORT_METHOD(copyVideo:(NSString *)videoPath
                  withResolver:(RCTPromiseResolveBlock)resolve
                  withRejecter:(RCTPromiseRejectBlock)reject)
 {
-  [MediaClipboardSwift.shared copyVideo:videoPath
+  [[MediaClipboardSwift shared] copyVideo:videoPath
                                 options:options
                              completion:^(NSError * _Nullable error) {
     if (error) {
@@ -82,7 +82,7 @@ RCT_EXPORT_METHOD(copyPDF:(NSString *)pdfPath
                 withResolver:(RCTPromiseResolveBlock)resolve
                 withRejecter:(RCTPromiseRejectBlock)reject)
 {
-  [MediaClipboardSwift.shared copyPDF:pdfPath
+  [[MediaClipboardSwift shared] copyPDF:pdfPath
                               options:options
                            completion:^(NSError * _Nullable error) {
     if (error) {
@@ -98,7 +98,7 @@ RCT_EXPORT_METHOD(copyAudio:(NSString *)audioPath
                  withResolver:(RCTPromiseResolveBlock)resolve
                  withRejecter:(RCTPromiseRejectBlock)reject)
 {
-  [MediaClipboardSwift.shared copyAudio:audioPath
+  [[MediaClipboardSwift shared] copyAudio:audioPath
                                 options:options
                              completion:^(NSError * _Nullable error) {
     if (error) {
@@ -115,7 +115,7 @@ RCT_EXPORT_METHOD(copyFile:(NSString *)filePath
                  withResolver:(RCTPromiseResolveBlock)resolve
                  withRejecter:(RCTPromiseRejectBlock)reject)
 {
-  [MediaClipboardSwift.shared copyFile:filePath
+  [[MediaClipboardSwift shared] copyFile:filePath
                                mimeType:mimeType
                                 options:options
                              completion:^(NSError * _Nullable error) {
@@ -133,7 +133,7 @@ RCT_EXPORT_METHOD(copyLargeFile:(NSString *)filePath
                       withResolver:(RCTPromiseResolveBlock)resolve
                       withRejecter:(RCTPromiseRejectBlock)reject)
 {
-  [MediaClipboardSwift.shared copyLargeFile:filePath
+  [[MediaClipboardSwift shared] copyLargeFile:filePath
                                    mimeType:mimeType
                                     options:options
                                  completion:^(NSError * _Nullable error) {
@@ -148,14 +148,14 @@ RCT_EXPORT_METHOD(copyLargeFile:(NSString *)filePath
 RCT_EXPORT_METHOD(hasContent:(RCTPromiseResolveBlock)resolve
                  withRejecter:(RCTPromiseRejectBlock)reject)
 {
-  BOOL hasContent = [MediaClipboardSwift.shared hasContent];
+  BOOL hasContent = [[MediaClipboardSwift shared] hasContent];
   resolve(@(hasContent));
 }
 
 RCT_EXPORT_METHOD(getContent:(RCTPromiseResolveBlock)resolve
                  withRejecter:(RCTPromiseRejectBlock)reject)
 {
-  [MediaClipboardSwift.shared getContentWithCompletion:^(NSDictionary * _Nullable content, NSError * _Nullable error) {
+  [[MediaClipboardSwift shared] getContentWithCompletion:^(NSDictionary * _Nullable content, NSError * _Nullable error) {
     if (error) {
       reject(@"GET_CONTENT_ERROR", error.localizedDescription, error);
     } else {
@@ -167,7 +167,7 @@ RCT_EXPORT_METHOD(getContent:(RCTPromiseResolveBlock)resolve
 RCT_EXPORT_METHOD(clear:(RCTPromiseResolveBlock)resolve
           withRejecter:(RCTPromiseRejectBlock)reject)
 {
-  [MediaClipboardSwift.shared clearWithCompletion:^(NSError * _Nullable error) {
+  [[MediaClipboardSwift shared] clearWithCompletion:^(NSError * _Nullable error) {
     if (error) {
       reject(@"CLEAR_ERROR", error.localizedDescription, error);
     } else {

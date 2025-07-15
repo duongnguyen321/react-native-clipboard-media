@@ -1,6 +1,0 @@
-module MediaClipboard {
-  umbrella header "MediaClipboard.h"
-  
-  export *
-  module * { export * }
-} 

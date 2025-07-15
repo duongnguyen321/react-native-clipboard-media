@@ -53,9 +53,7 @@ class MediaClipboardSwift: NSObject {
                 let videoData = try self.loadFileData(from: videoPath)
                 DispatchQueue.main.async {
                     if #available(iOS 14.0, *) {
-                        let item = UIPasteboardItem()
-                        item.setData(videoData, forType: UTType.movie.identifier)
-                        UIPasteboard.general.items = [item.data]
+                        UIPasteboard.general.items = [[UTType.movie.identifier: videoData]]
                     } else {
                         UIPasteboard.general.setData(videoData, forPasteboardType: kUTTypeMovie as String)
                     }
@@ -75,9 +73,7 @@ class MediaClipboardSwift: NSObject {
                 let pdfData = try self.loadFileData(from: pdfPath)
                 DispatchQueue.main.async {
                     if #available(iOS 14.0, *) {
-                        let item = UIPasteboardItem()
-                        item.setData(pdfData, forType: UTType.pdf.identifier)
-                        UIPasteboard.general.items = [item.data]
+                        UIPasteboard.general.items = [[UTType.pdf.identifier: pdfData]]
                     } else {
                         UIPasteboard.general.setData(pdfData, forPasteboardType: kUTTypePDF as String)
                     }
@@ -99,9 +95,7 @@ class MediaClipboardSwift: NSObject {
                 
                 DispatchQueue.main.async {
                     if #available(iOS 14.0, *) {
-                        let item = UIPasteboardItem()
-                        item.setData(audioData, forType: audioType.identifier)
-                        UIPasteboard.general.items = [item.data]
+                        UIPasteboard.general.items = [[audioType.identifier: audioData]]
                     } else {
                         UIPasteboard.general.setData(audioData, forPasteboardType: audioType.identifier)
                     }
@@ -123,9 +117,7 @@ class MediaClipboardSwift: NSObject {
                 
                 DispatchQueue.main.async {
                     if #available(iOS 14.0, *) {
-                        let item = UIPasteboardItem()
-                        item.setData(fileData, forType: utType.identifier)
-                        UIPasteboard.general.items = [item.data]
+                        UIPasteboard.general.items = [[utType.identifier: fileData]]
                     } else {
                         UIPasteboard.general.setData(fileData, forPasteboardType: utType.identifier)
                     }
@@ -151,9 +143,7 @@ class MediaClipboardSwift: NSObject {
                 
                 DispatchQueue.main.async {
                     if #available(iOS 14.0, *) {
-                        let item = UIPasteboardItem()
-                        item.setData(fileData, forType: utType.identifier)
-                        UIPasteboard.general.items = [item.data]
+                        UIPasteboard.general.items = [[utType.identifier: fileData]]
                     } else {
                         UIPasteboard.general.setData(fileData, forPasteboardType: utType.identifier)
                     }
@@ -171,7 +161,8 @@ class MediaClipboardSwift: NSObject {
         return !UIPasteboard.general.items.isEmpty
     }
     
-    @objc func getContent(completion: @escaping ([String: Any]?, Error?) -> Void) {
+    @objc(getContentWithCompletion:)
+    func getContent(completion: @escaping ([String: Any]?, Error?) -> Void) {
         DispatchQueue.main.async {
             let pasteboard = UIPasteboard.general
             var content: [String: Any] = [:]
@@ -206,7 +197,8 @@ class MediaClipboardSwift: NSObject {
         }
     }
     
-    @objc func clear(completion: @escaping (Error?) -> Void) {
+    @objc(clearWithCompletion:)
+    func clear(completion: @escaping (Error?) -> Void) {
         DispatchQueue.main.async {
             UIPasteboard.general.items = []
             completion(nil)
@@ -280,34 +272,33 @@ class MediaClipboardSwift: NSObject {
         return data
     }
     
-    @available(iOS 14.0, *)
     private func getUTType(for mimeType: String) -> UTType {
-        if let utType = UTType(mimeType: mimeType) {
-            return utType
-        }
-        return UTType.data
-    }
-    
-    @available(iOS, deprecated: 14.0)
-    private func getUTType(for mimeType: String) -> UTType {
-        // Fallback for older iOS versions
-        switch mimeType {
-        case "image/jpeg", "image/jpg":
-            return UTType(kUTTypeJPEG as String)!
-        case "image/png":
-            return UTType(kUTTypePNG as String)!
-        case "video/mp4":
-            return UTType(kUTTypeMPEG4 as String)!
-        case "video/quicktime":
-            return UTType(kUTTypeQuickTimeMovie as String)!
-        case "application/pdf":
-            return UTType(kUTTypePDF as String)!
-        case "audio/mpeg", "audio/mp3":
-            return UTType(kUTTypeMP3 as String)!
-        case "audio/wav":
-            return UTType("public.wav")!
-        default:
-            return UTType(kUTTypeData as String)!
+        if #available(iOS 14.0, *) {
+            // iOS 14+ approach - use UTType initializer with mimeType
+            if let utType = UTType(mimeType: mimeType) {
+                return utType
+            }
+            return UTType.data
+        } else {
+            // Fallback for older iOS versions using legacy constants
+            switch mimeType {
+            case "image/jpeg", "image/jpg":
+                return UTType(kUTTypeJPEG as String)!
+            case "image/png":
+                return UTType(kUTTypePNG as String)!
+            case "video/mp4":
+                return UTType(kUTTypeMPEG4 as String)!
+            case "video/quicktime":
+                return UTType(kUTTypeQuickTimeMovie as String)!
+            case "application/pdf":
+                return UTType(kUTTypePDF as String)!
+            case "audio/mpeg", "audio/mp3":
+                return UTType(kUTTypeMP3 as String)!
+            case "audio/wav":
+                return UTType("public.wav")!
+            default:
+                return UTType(kUTTypeData as String)!
+            }
         }
     }
     
@@ -321,9 +312,9 @@ class MediaClipboardSwift: NSObject {
             case "wav":
                 return UTType.wav
             case "m4a":
-                return UTType.m4a
+                return UTType.mpeg4Audio
             case "aac":
-                return UTType.aac
+                return UTType("public.aac")!
             default:
                 return UTType.audio
             }
@@ -332,9 +323,9 @@ class MediaClipboardSwift: NSObject {
             case "mp3":
                 return UTType(kUTTypeMP3 as String)!
             case "wav":
-                return UTType("public.wav")!
+                return UTType(kUTTypeWaveformAudio as String)!
             case "m4a":
-                return UTType(kUTTypeAppleProtectedMPEG4Audio as String)!
+                return UTType(kUTTypeMPEG4Audio as String)!
             default:
                 return UTType(kUTTypeAudio as String)!
             }

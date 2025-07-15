@@ -20,12 +20,9 @@ Pod::Spec.new do |s|
 
   s.dependency "React-Core"
   
-  # Configure as static framework to support Swift with module maps
-  s.static_framework = true
-  
-  # Enable module maps for better Swift integration
-  s.module_map = 'ios/MediaClipboard.modulemap'
-  
   # Define the Swift version
   s.swift_version = "5.0"
+  
+  # Define module name for Swift bridging header
+  s.module_name = "ReactNativeClipboardMedia"
 end 
