@@ -1,8 +1,27 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
   package="com.mediaclipboard">
 
-  <!-- Permissions for reading external storage (optional) -->
+  <!-- Basic storage permissions -->
   <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+  
+  <!-- For Android 13+ (API 33), granular media permissions are required -->
+  <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
+  <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
+  <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" />
+  
+  <!-- For Android 11+ (API 30), if you need to access all files -->
+  <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE" 
+    android:maxSdkVersion="32" />
+  
+  <!-- Internet permission for downloading remote files -->
+  <uses-permission android:name="android.permission.INTERNET" />
+  
+  <!-- Network state permission to check connectivity -->
+  <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+  
+  <!-- Write external storage for caching downloaded files -->
+  <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" 
+    android:maxSdkVersion="28" />
 
   <application>
     <!-- File provider for sharing files securely -->

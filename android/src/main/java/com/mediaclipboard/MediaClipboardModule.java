@@ -4,12 +4,14 @@ import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.Context;
 import android.content.ContentResolver;
+import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.os.Build;
 import android.provider.MediaStore;
 import android.webkit.MimeTypeMap;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.core.content.ContextCompat;
 
 import com.facebook.react.bridge.Arguments;
 import com.facebook.react.bridge.Promise;
@@ -44,12 +46,68 @@ public class MediaClipboardModule extends ReactContextBaseJavaModule {
         return MODULE_NAME;
     }
 
+    /**
+     * Check if required permissions are granted for clipboard operations
+     */
+    private boolean checkPermissions(String mediaType) {
+        Context context = getReactApplicationContext();
+        
+        // For Android 13+ (API 33), check granular media permissions
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            switch (mediaType.toLowerCase()) {
+                case "image":
+                    return ContextCompat.checkSelfPermission(context, android.Manifest.permission.READ_MEDIA_IMAGES) 
+                            == PackageManager.PERMISSION_GRANTED;
+                case "video":
+                    return ContextCompat.checkSelfPermission(context, android.Manifest.permission.READ_MEDIA_VIDEO) 
+                            == PackageManager.PERMISSION_GRANTED;
+                case "audio":
+                    return ContextCompat.checkSelfPermission(context, android.Manifest.permission.READ_MEDIA_AUDIO) 
+                            == PackageManager.PERMISSION_GRANTED;
+                default:
+                    // For other file types, check if any media permission is granted
+                    return ContextCompat.checkSelfPermission(context, android.Manifest.permission.READ_MEDIA_IMAGES) 
+                            == PackageManager.PERMISSION_GRANTED ||
+                           ContextCompat.checkSelfPermission(context, android.Manifest.permission.READ_MEDIA_VIDEO) 
+                            == PackageManager.PERMISSION_GRANTED ||
+                           ContextCompat.checkSelfPermission(context, android.Manifest.permission.READ_MEDIA_AUDIO) 
+                            == PackageManager.PERMISSION_GRANTED;
+            }
+        } else {
+            // For older versions, check READ_EXTERNAL_STORAGE
+            return ContextCompat.checkSelfPermission(context, android.Manifest.permission.READ_EXTERNAL_STORAGE) 
+                    == PackageManager.PERMISSION_GRANTED;
+        }
+    }
+
+    /**
+     * Get permission error message with helpful instructions
+     */
+    private String getPermissionErrorMessage(String mediaType) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            switch (mediaType.toLowerCase()) {
+                case "image":
+                    return "Missing READ_MEDIA_IMAGES permission. Please add this permission to your app's AndroidManifest.xml and request it at runtime.";
+                case "video":
+                    return "Missing READ_MEDIA_VIDEO permission. Please add this permission to your app's AndroidManifest.xml and request it at runtime.";
+                case "audio":
+                    return "Missing READ_MEDIA_AUDIO permission. Please add this permission to your app's AndroidManifest.xml and request it at runtime.";
+                default:
+                    return "Missing media permissions. Please add READ_MEDIA_IMAGES, READ_MEDIA_VIDEO, or READ_MEDIA_AUDIO permissions to your app's AndroidManifest.xml and request them at runtime.";
+            }
+        } else {
+            return "Missing READ_EXTERNAL_STORAGE permission. Please add this permission to your app's AndroidManifest.xml and request it at runtime.";
+        }
+    }
+
     @ReactMethod
     public void copyText(String text, Promise promise) {
         try {
             ClipData clip = ClipData.newPlainText("text", text);
             clipboardManager.setPrimaryClip(clip);
             promise.resolve(null);
+        } catch (SecurityException e) {
+            promise.reject("CLIPBOARD_ACCESS_DENIED", "Clipboard access denied. This might be due to app being in background or system restrictions.", e);
         } catch (Exception e) {
             promise.reject("COPY_TEXT_ERROR", e.getMessage(), e);
         }
@@ -59,6 +117,12 @@ public class MediaClipboardModule extends ReactContextBaseJavaModule {
     public void copyImage(String imagePath, ReadableMap options, Promise promise) {
         executorService.execute(() -> {
             try {
+                // Check permissions first
+                if (!checkPermissions("image")) {
+                    promise.reject("PERMISSION_DENIED", getPermissionErrorMessage("image"));
+                    return;
+                }
+
                 String resolvedPath = resolveAssetPath(imagePath);
                 
                 // Check if this is a relative path issue
@@ -79,8 +143,10 @@ public class MediaClipboardModule extends ReactContextBaseJavaModule {
                     clipboardManager.setPrimaryClip(clip);
                     promise.resolve(null);
                 } else {
-                    promise.reject("URI_CREATION_ERROR", "Failed to create content URI for image");
+                    promise.reject("URI_CREATION_ERROR", "Failed to create content URI for image. This might be due to FileProvider configuration issues.");
                 }
+            } catch (SecurityException e) {
+                promise.reject("CLIPBOARD_ACCESS_DENIED", "Clipboard access denied. This might be due to app being in background, insufficient permissions, or system restrictions.", e);
             } catch (Exception e) {
                 promise.reject("COPY_IMAGE_ERROR", e.getMessage(), e);
             }
@@ -91,6 +157,12 @@ public class MediaClipboardModule extends ReactContextBaseJavaModule {
     public void copyVideo(String videoPath, ReadableMap options, Promise promise) {
         executorService.execute(() -> {
             try {
+                // Check permissions first
+                if (!checkPermissions("video")) {
+                    promise.reject("PERMISSION_DENIED", getPermissionErrorMessage("video"));
+                    return;
+                }
+
                 String resolvedPath = resolveAssetPath(videoPath);
                 
                 // Check if this is a relative path issue
@@ -111,8 +183,10 @@ public class MediaClipboardModule extends ReactContextBaseJavaModule {
                     clipboardManager.setPrimaryClip(clip);
                     promise.resolve(null);
                 } else {
-                    promise.reject("URI_CREATION_ERROR", "Failed to create content URI for video");
+                    promise.reject("URI_CREATION_ERROR", "Failed to create content URI for video. This might be due to FileProvider configuration issues.");
                 }
+            } catch (SecurityException e) {
+                promise.reject("CLIPBOARD_ACCESS_DENIED", "Clipboard access denied. This might be due to app being in background, insufficient permissions, or system restrictions.", e);
             } catch (Exception e) {
                 promise.reject("COPY_VIDEO_ERROR", e.getMessage(), e);
             }
@@ -123,6 +197,12 @@ public class MediaClipboardModule extends ReactContextBaseJavaModule {
     public void copyPDF(String pdfPath, ReadableMap options, Promise promise) {
         executorService.execute(() -> {
             try {
+                // Check permissions first  
+                if (!checkPermissions("pdf")) {
+                    promise.reject("PERMISSION_DENIED", getPermissionErrorMessage("pdf"));
+                    return;
+                }
+
                 String resolvedPath = resolveAssetPath(pdfPath);
                 
                 // Check if this is a relative path issue
@@ -143,8 +223,10 @@ public class MediaClipboardModule extends ReactContextBaseJavaModule {
                     clipboardManager.setPrimaryClip(clip);
                     promise.resolve(null);
                 } else {
-                    promise.reject("URI_CREATION_ERROR", "Failed to create content URI for PDF");
+                    promise.reject("URI_CREATION_ERROR", "Failed to create content URI for PDF. This might be due to FileProvider configuration issues.");
                 }
+            } catch (SecurityException e) {
+                promise.reject("CLIPBOARD_ACCESS_DENIED", "Clipboard access denied. This might be due to app being in background, insufficient permissions, or system restrictions.", e);
             } catch (Exception e) {
                 promise.reject("COPY_PDF_ERROR", e.getMessage(), e);
             }
@@ -155,6 +237,12 @@ public class MediaClipboardModule extends ReactContextBaseJavaModule {
     public void copyAudio(String audioPath, ReadableMap options, Promise promise) {
         executorService.execute(() -> {
             try {
+                // Check permissions first
+                if (!checkPermissions("audio")) {
+                    promise.reject("PERMISSION_DENIED", getPermissionErrorMessage("audio"));
+                    return;
+                }
+
                 String resolvedPath = resolveAssetPath(audioPath);
                 
                 // Check if this is a relative path issue
@@ -175,8 +263,10 @@ public class MediaClipboardModule extends ReactContextBaseJavaModule {
                     clipboardManager.setPrimaryClip(clip);
                     promise.resolve(null);
                 } else {
-                    promise.reject("URI_CREATION_ERROR", "Failed to create content URI for audio");
+                    promise.reject("URI_CREATION_ERROR", "Failed to create content URI for audio. This might be due to FileProvider configuration issues.");
                 }
+            } catch (SecurityException e) {
+                promise.reject("CLIPBOARD_ACCESS_DENIED", "Clipboard access denied. This might be due to app being in background, insufficient permissions, or system restrictions.", e);
             } catch (Exception e) {
                 promise.reject("COPY_AUDIO_ERROR", e.getMessage(), e);
             }
@@ -187,6 +277,12 @@ public class MediaClipboardModule extends ReactContextBaseJavaModule {
     public void copyFile(String filePath, String mimeType, ReadableMap options, Promise promise) {
         executorService.execute(() -> {
             try {
+                // Check permissions first
+                if (!checkPermissions("file")) {
+                    promise.reject("PERMISSION_DENIED", getPermissionErrorMessage("file"));
+                    return;
+                }
+
                 String resolvedPath = resolveAssetPath(filePath);
                 
                 // Check if this is a relative path issue
@@ -207,8 +303,10 @@ public class MediaClipboardModule extends ReactContextBaseJavaModule {
                     clipboardManager.setPrimaryClip(clip);
                     promise.resolve(null);
                 } else {
-                    promise.reject("URI_CREATION_ERROR", "Failed to create content URI for file");
+                    promise.reject("URI_CREATION_ERROR", "Failed to create content URI for file. This might be due to FileProvider configuration issues.");
                 }
+            } catch (SecurityException e) {
+                promise.reject("CLIPBOARD_ACCESS_DENIED", "Clipboard access denied. This might be due to app being in background, insufficient permissions, or system restrictions.", e);
             } catch (Exception e) {
                 promise.reject("COPY_FILE_ERROR", e.getMessage(), e);
             }
@@ -219,6 +317,12 @@ public class MediaClipboardModule extends ReactContextBaseJavaModule {
     public void copyLargeFile(String filePath, String mimeType, ReadableMap options, Promise promise) {
         executorService.execute(() -> {
             try {
+                // Check permissions first
+                if (!checkPermissions("file")) {
+                    promise.reject("PERMISSION_DENIED", getPermissionErrorMessage("file"));
+                    return;
+                }
+
                 String resolvedPath = resolveAssetPath(filePath);
                 
                 // Check if this is a relative path issue
@@ -241,8 +345,10 @@ public class MediaClipboardModule extends ReactContextBaseJavaModule {
                     clipboardManager.setPrimaryClip(clip);
                     promise.resolve(null);
                 } else {
-                    promise.reject("URI_CREATION_ERROR", "Failed to create content URI for large file");
+                    promise.reject("URI_CREATION_ERROR", "Failed to create content URI for large file. This might be due to FileProvider configuration issues.");
                 }
+            } catch (SecurityException e) {
+                promise.reject("CLIPBOARD_ACCESS_DENIED", "Clipboard access denied. This might be due to app being in background, insufficient permissions, or system restrictions.", e);
             } catch (Exception e) {
                 promise.reject("COPY_LARGE_FILE_ERROR", e.getMessage(), e);
             }
@@ -256,6 +362,8 @@ public class MediaClipboardModule extends ReactContextBaseJavaModule {
                     clipboardManager.getPrimaryClip() != null &&
                     clipboardManager.getPrimaryClip().getItemCount() > 0;
             promise.resolve(hasContent);
+        } catch (SecurityException e) {
+            promise.reject("CLIPBOARD_ACCESS_DENIED", "Clipboard access denied. This might be due to app being in background or system restrictions.", e);
         } catch (Exception e) {
             promise.reject("HAS_CONTENT_ERROR", e.getMessage(), e);
         }
@@ -304,6 +412,8 @@ public class MediaClipboardModule extends ReactContextBaseJavaModule {
             }
 
             promise.resolve(result);
+        } catch (SecurityException e) {
+            promise.reject("CLIPBOARD_ACCESS_DENIED", "Clipboard access denied. This might be due to app being in background or system restrictions.", e);
         } catch (Exception e) {
             promise.reject("GET_CONTENT_ERROR", e.getMessage(), e);
         }
@@ -320,6 +430,8 @@ public class MediaClipboardModule extends ReactContextBaseJavaModule {
                 clipboardManager.setPrimaryClip(emptyClip);
             }
             promise.resolve(null);
+        } catch (SecurityException e) {
+            promise.reject("CLIPBOARD_ACCESS_DENIED", "Clipboard access denied. This might be due to app being in background or system restrictions.", e);
         } catch (Exception e) {
             promise.reject("CLEAR_ERROR", e.getMessage(), e);
         }
