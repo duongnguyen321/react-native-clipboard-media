@@ -19,6 +19,7 @@ import com.facebook.react.bridge.ReactContextBaseJavaModule;
 import com.facebook.react.bridge.ReactMethod;
 import com.facebook.react.bridge.ReadableMap;
 import com.facebook.react.bridge.WritableMap;
+import com.facebook.react.module.annotations.ReactModule;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -31,8 +32,9 @@ import android.util.Base64;
 import java.util.ArrayList;
 import java.util.List;
 import android.content.ClipDescription;
+import com.facebook.react.bridge.Invalidatable;
 
-public class MediaClipboardModule extends ReactContextBaseJavaModule {
+public class MediaClipboardModule extends ReactContextBaseJavaModule implements Invalidatable {
 
     private static final String MODULE_NAME = "MediaClipboard";
     private ClipboardManager clipboardManager;
@@ -693,8 +695,7 @@ public class MediaClipboardModule extends ReactContextBaseJavaModule {
                     }
                 }
                 
-                // Set the clip data with the proper MIME type
-                clip.getDescription().setLabel("Copied Image");
+                // ClipData created with proper MIME type and permissions
                 android.util.Log.d("MediaClipboard", "Created ClipData with URI: " + imageUri.toString());
                 
             } else {
@@ -711,8 +712,7 @@ public class MediaClipboardModule extends ReactContextBaseJavaModule {
     }
 
     @Override
-    public void onCatalystInstanceDestroy() {
-        super.onCatalystInstanceDestroy();
+    public void invalidate() {
         if (executorService != null && !executorService.isShutdown()) {
             executorService.shutdown();
         }
