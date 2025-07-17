@@ -4,6 +4,7 @@ import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.Context;
 import android.content.ContentResolver;
+import android.content.Intent;
 import android.net.Uri;
 import android.os.Build;
 import android.provider.MediaStore;
@@ -29,6 +30,7 @@ import java.util.concurrent.Executors;
 import android.util.Base64;
 import java.util.ArrayList;
 import java.util.List;
+import android.content.ClipDescription;
 
 public class MediaClipboardModule extends ReactContextBaseJavaModule {
 
@@ -88,22 +90,22 @@ public class MediaClipboardModule extends ReactContextBaseJavaModule {
                 Uri imageUri = MediaClipboardUtils.getContentUri(getReactApplicationContext(), imageFile);
                 if (imageUri != null) {
                     String mimeType = MediaClipboardUtils.getMimeType(imageFile.getAbsolutePath());
-                    ClipData clip = ClipData.newUri(getReactApplicationContext().getContentResolver(), "image", imageUri);
                     
-                    // Grant URI permissions to prevent "exposed beyond app" error
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-                        clip.getDescription().getLabel();
-                        // The ClipData itself handles permissions when created with newUri()
+                    // Create ClipData with proper permissions for FileProvider URIs
+                    ClipData clip = createClipDataForImage(imageUri, mimeType);
+                    
+                    if (clip != null) {
+                        clipboardManager.setPrimaryClip(clip);
+                        
+                        // Show success notification if requested
+                        if (options != null && options.hasKey("showNotification") && options.getBoolean("showNotification")) {
+                            android.util.Log.d("MediaClipboard", "Image copied to clipboard successfully");
+                        }
+                        
+                        promise.resolve(null);
+                    } else {
+                        promise.reject("CLIPDATA_CREATION_ERROR", "Failed to create ClipData for image");
                     }
-                    
-                    clipboardManager.setPrimaryClip(clip);
-                    
-                    // Show success notification if requested
-                    if (options != null && options.hasKey("showNotification") && options.getBoolean("showNotification")) {
-                        android.util.Log.d("MediaClipboard", "Image copied to clipboard successfully");
-                    }
-                    
-                    promise.resolve(null);
                 } else {
                     promise.reject("URI_CREATION_ERROR", "Failed to create content URI for image");
                 }
@@ -189,15 +191,21 @@ public class MediaClipboardModule extends ReactContextBaseJavaModule {
             // Create content URI and copy to clipboard
             Uri imageUri = MediaClipboardUtils.getContentUri(getReactApplicationContext(), tempFile);
             if (imageUri != null) {
-                ClipData clip = ClipData.newUri(getReactApplicationContext().getContentResolver(), "image", imageUri);
-                clipboardManager.setPrimaryClip(clip);
+                // Create ClipData with proper permissions for FileProvider URIs
+                ClipData clip = createClipDataForImage(imageUri, mimeType);
                 
-                // Show success notification if requested
-                if (options != null && options.hasKey("showNotification") && options.getBoolean("showNotification")) {
-                    android.util.Log.d("MediaClipboard", "Base64 image copied to clipboard successfully");
+                if (clip != null) {
+                    clipboardManager.setPrimaryClip(clip);
+                    
+                    // Show success notification if requested
+                    if (options != null && options.hasKey("showNotification") && options.getBoolean("showNotification")) {
+                        android.util.Log.d("MediaClipboard", "Base64 image copied to clipboard successfully");
+                    }
+                    
+                    promise.resolve(null);
+                } else {
+                    promise.reject("CLIPDATA_CREATION_ERROR", "Failed to create ClipData for base64 image");
                 }
-                
-                promise.resolve(null);
             } else {
                 promise.reject("URI_CREATION_ERROR", "Failed to create content URI for base64 image");
             }
@@ -625,6 +633,82 @@ public class MediaClipboardModule extends ReactContextBaseJavaModule {
      */
     private String createTempFileName(String prefix, String extension) {
         return prefix + "_" + System.currentTimeMillis() + "_" + Math.random() * 1000 + "." + extension;
+    }
+
+    /**
+     * Alternative method to create a content URI by inserting into MediaStore
+     * This can be used as a fallback when FileProvider URIs cause issues
+     */
+    private Uri createMediaStoreUri(File imageFile, String mimeType) {
+        try {
+            ContentResolver resolver = getReactApplicationContext().getContentResolver();
+            
+            // For Android 10+ (API 29+), use the new MediaStore API
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI;
+                // For newer Android versions, we'll stick with FileProvider as it's more secure
+                return null;
+            }
+            
+            // For older versions, we could use MediaStore.Images.Media.insertImage
+            // but this requires WRITE_EXTERNAL_STORAGE permission and isn't recommended
+            return null;
+            
+        } catch (Exception e) {
+            android.util.Log.e("MediaClipboard", "Failed to create MediaStore URI", e);
+            return null;
+        }
+    }
+
+    /**
+     * Enhanced method to create ClipData with better error handling and fallbacks
+     */
+    private ClipData createClipDataForImage(Uri imageUri, String mimeType) {
+        try {
+            ClipData clip;
+            
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                // For Android 7.0+, use ClipData.Item with explicit URI permissions
+                ClipData.Item item = new ClipData.Item(imageUri);
+                ClipDescription description = new ClipDescription("image", new String[]{mimeType != null ? mimeType : "image/*"});
+                clip = new ClipData(description, item);
+                
+                // Grant read permission to multiple potential clipboard consumers
+                Context context = getReactApplicationContext();
+                int flags = Intent.FLAG_GRANT_READ_URI_PERMISSION;
+                
+                // Grant permissions to common clipboard and system processes
+                String[] clipboardPackages = {
+                    "com.android.systemui",     // System UI (clipboard)
+                    "android",                  // Android system
+                    "com.android.providers.media", // Media provider
+                    context.getPackageName()    // Our own app
+                };
+                
+                for (String packageName : clipboardPackages) {
+                    try {
+                        context.grantUriPermission(packageName, imageUri, flags);
+                        android.util.Log.d("MediaClipboard", "Granted URI permission to: " + packageName);
+                    } catch (Exception e) {
+                        android.util.Log.d("MediaClipboard", "Could not grant permission to " + packageName + ": " + e.getMessage());
+                    }
+                }
+                
+                // Set the clip data with the proper MIME type
+                clip.getDescription().setLabel("Copied Image");
+                android.util.Log.d("MediaClipboard", "Created ClipData with URI: " + imageUri.toString());
+                
+            } else {
+                // For older Android versions, use the standard approach
+                clip = ClipData.newUri(getReactApplicationContext().getContentResolver(), "image", imageUri);
+            }
+            
+            return clip;
+            
+        } catch (Exception e) {
+            android.util.Log.e("MediaClipboard", "Error creating ClipData", e);
+            return null;
+        }
     }
 
     @Override

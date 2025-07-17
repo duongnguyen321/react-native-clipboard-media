@@ -29,19 +29,6 @@ public class MediaClipboardUtils {
                 Uri uri = FileProvider.getUriForFile(context, authority, file);
                 android.util.Log.d("MediaClipboard", "Generated FileProvider URI: " + uri.toString());
                 
-                // Grant temporary read permission to the clipboard system
-                // This helps prevent "exposed beyond app" errors
-                if (uri != null) {
-                    context.grantUriPermission("com.android.systemui", uri, Intent.FLAG_GRANT_READ_URI_PERMISSION);
-                    // Grant permission to common clipboard handlers
-                    try {
-                        context.grantUriPermission("android", uri, Intent.FLAG_GRANT_READ_URI_PERMISSION);
-                    } catch (Exception e) {
-                        // Ignore if this fails, it's not critical
-                        android.util.Log.d("MediaClipboard", "Could not grant permission to android system: " + e.getMessage());
-                    }
-                }
-                
                 return uri;
             } else {
                 // Use file URI for older versions
