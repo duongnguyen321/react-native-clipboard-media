@@ -36,6 +36,38 @@ const App = () => {
     }
   };
 
+  const copyBase64Image = async () => {
+    try {
+      // Using a base64 image data URI for demo
+      const base64Image =
+        'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==';
+      const options = {
+        filename: 'demo-image.png',
+        showNotification: true,
+      };
+      await MediaClipboard.copyImage(base64Image, options);
+      Alert.alert('Success', 'Base64 image copied to clipboard!');
+    } catch (error) {
+      Alert.alert('Error', `Failed to copy base64 image: ${error.message}`);
+    }
+  };
+
+  const copyUrlImage = async () => {
+    try {
+      // Using an image URL for demo
+      const imageUrl =
+        'https://via.placeholder.com/150/0000FF/808080?text=Test';
+      const options = {
+        filename: 'demo-image.png',
+        showNotification: true,
+      };
+      await MediaClipboard.copyImage(imageUrl, options);
+      Alert.alert('Success', 'URL image copied to clipboard!');
+    } catch (error) {
+      Alert.alert('Error', `Failed to copy URL image: ${error.message}`);
+    }
+  };
+
   const copyVideo = async () => {
     try {
       // Example video path - in a real app, this would come from media picker
@@ -122,7 +154,13 @@ const App = () => {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Copy Media Files</Text>
           <TouchableOpacity style={styles.button} onPress={copyImage}>
-            <Text style={styles.buttonText}>Copy Image</Text>
+            <Text style={styles.buttonText}>Copy Image (File Path)</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.button} onPress={copyBase64Image}>
+            <Text style={styles.buttonText}>Copy Base64 Image</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.button} onPress={copyUrlImage}>
+            <Text style={styles.buttonText}>Copy URL Image</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.button} onPress={copyVideo}>
             <Text style={styles.buttonText}>Copy Video</Text>

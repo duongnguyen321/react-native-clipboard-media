@@ -1,6 +1,7 @@
 package com.mediaclipboard;
 
 import android.content.Context;
+import android.content.Intent;
 import android.net.Uri;
 import android.os.Build;
 import android.webkit.MimeTypeMap;
@@ -20,12 +21,35 @@ public class MediaClipboardUtils {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
                 // Use FileProvider for Android 7.0+
                 String authority = context.getPackageName() + FILE_PROVIDER_AUTHORITY;
-                return FileProvider.getUriForFile(context, authority, file);
+                android.util.Log.d("MediaClipboard", "Using FileProvider authority: " + authority);
+                android.util.Log.d("MediaClipboard", "File path: " + file.getAbsolutePath());
+                android.util.Log.d("MediaClipboard", "File exists: " + file.exists());
+                android.util.Log.d("MediaClipboard", "File readable: " + file.canRead());
+                
+                Uri uri = FileProvider.getUriForFile(context, authority, file);
+                android.util.Log.d("MediaClipboard", "Generated FileProvider URI: " + uri.toString());
+                
+                // Grant temporary read permission to the clipboard system
+                // This helps prevent "exposed beyond app" errors
+                if (uri != null) {
+                    context.grantUriPermission("com.android.systemui", uri, Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                    // Grant permission to common clipboard handlers
+                    try {
+                        context.grantUriPermission("android", uri, Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                    } catch (Exception e) {
+                        // Ignore if this fails, it's not critical
+                        android.util.Log.d("MediaClipboard", "Could not grant permission to android system: " + e.getMessage());
+                    }
+                }
+                
+                return uri;
             } else {
                 // Use file URI for older versions
+                android.util.Log.d("MediaClipboard", "Using file URI for Android < 7.0");
                 return Uri.fromFile(file);
             }
         } catch (Exception e) {
+            android.util.Log.e("MediaClipboard", "Error creating content URI", e);
             // Fallback to file URI if FileProvider fails
             return Uri.fromFile(file);
         }

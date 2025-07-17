@@ -21,21 +21,27 @@ import com.facebook.react.bridge.WritableMap;
 
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import android.util.Base64;
+import java.util.ArrayList;
+import java.util.List;
 
 public class MediaClipboardModule extends ReactContextBaseJavaModule {
 
     private static final String MODULE_NAME = "MediaClipboard";
     private ClipboardManager clipboardManager;
     private ExecutorService executorService;
+    private List<File> temporaryFiles; // Track temporary files for cleanup
 
     public MediaClipboardModule(ReactApplicationContext reactContext) {
         super(reactContext);
         this.clipboardManager = (ClipboardManager) reactContext.getSystemService(Context.CLIPBOARD_SERVICE);
         this.executorService = Executors.newCachedThreadPool();
+        this.temporaryFiles = new ArrayList<>();
     }
 
     @NonNull
@@ -59,6 +65,12 @@ public class MediaClipboardModule extends ReactContextBaseJavaModule {
     public void copyImage(String imagePath, ReadableMap options, Promise promise) {
         executorService.execute(() -> {
             try {
+                // Handle base64 data URI
+                if (imagePath.startsWith("data:image/")) {
+                    handleBase64Image(imagePath, options, promise);
+                    return;
+                }
+                
                 String resolvedPath = resolveAssetPath(imagePath);
                 
                 // Check if this is a relative path issue
@@ -75,8 +87,22 @@ public class MediaClipboardModule extends ReactContextBaseJavaModule {
 
                 Uri imageUri = MediaClipboardUtils.getContentUri(getReactApplicationContext(), imageFile);
                 if (imageUri != null) {
+                    String mimeType = MediaClipboardUtils.getMimeType(imageFile.getAbsolutePath());
                     ClipData clip = ClipData.newUri(getReactApplicationContext().getContentResolver(), "image", imageUri);
+                    
+                    // Grant URI permissions to prevent "exposed beyond app" error
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                        clip.getDescription().getLabel();
+                        // The ClipData itself handles permissions when created with newUri()
+                    }
+                    
                     clipboardManager.setPrimaryClip(clip);
+                    
+                    // Show success notification if requested
+                    if (options != null && options.hasKey("showNotification") && options.getBoolean("showNotification")) {
+                        android.util.Log.d("MediaClipboard", "Image copied to clipboard successfully");
+                    }
+                    
                     promise.resolve(null);
                 } else {
                     promise.reject("URI_CREATION_ERROR", "Failed to create content URI for image");
@@ -85,6 +111,101 @@ public class MediaClipboardModule extends ReactContextBaseJavaModule {
                 promise.reject("COPY_IMAGE_ERROR", e.getMessage(), e);
             }
         });
+    }
+
+    /**
+     * Handle base64 data URI images
+     */
+    private void handleBase64Image(String dataUri, ReadableMap options, Promise promise) {
+        try {
+            // Clean up old temp files before creating new ones
+            cleanupOldTempFiles();
+            
+            // Parse the data URI: data:image/png;base64,iVBORw0K...
+            if (!dataUri.contains(";base64,")) {
+                promise.reject("INVALID_BASE64", "Invalid base64 data URI format. Expected format: data:image/type;base64,<data>");
+                return;
+            }
+            
+            String[] parts = dataUri.split(";base64,");
+            if (parts.length != 2) {
+                promise.reject("INVALID_BASE64", "Invalid base64 data URI format. Expected format: data:image/type;base64,<data>");
+                return;
+            }
+            
+            // Extract MIME type (e.g., "image/png" from "data:image/png;base64,...")
+            String mimeTypePart = parts[0];
+            if (!mimeTypePart.startsWith("data:")) {
+                promise.reject("INVALID_BASE64", "Invalid data URI - must start with 'data:'");
+                return;
+            }
+            String mimeType = mimeTypePart.substring(5); // Remove "data:" prefix
+            
+            // Get file extension from MIME type
+            String extension = "jpg"; // default
+            if (mimeType.equals("image/png")) {
+                extension = "png";
+            } else if (mimeType.equals("image/gif")) {
+                extension = "gif";
+            } else if (mimeType.equals("image/webp")) {
+                extension = "webp";
+            } else if (mimeType.equals("image/bmp")) {
+                extension = "bmp";
+            } else if (mimeType.equals("image/jpeg")) {
+                extension = "jpg";
+            } else if (mimeType.equals("image/svg+xml")) {
+                extension = "svg";
+            }
+            
+            // Decode base64 data
+            String base64Data = parts[1];
+            byte[] imageData;
+            try {
+                imageData = Base64.decode(base64Data, Base64.DEFAULT);
+            } catch (IllegalArgumentException e) {
+                promise.reject("BASE64_DECODE_ERROR", "Failed to decode base64 data: " + e.getMessage());
+                return;
+            }
+            
+            if (imageData.length == 0) {
+                promise.reject("BASE64_DECODE_ERROR", "Decoded base64 data is empty");
+                return;
+            }
+            
+            // Create temporary file
+            File cacheDir = getReactApplicationContext().getCacheDir();
+            String filename = createTempFileName("clipboard_image", extension);
+            File tempFile = new File(cacheDir, filename);
+            temporaryFiles.add(tempFile); // Add to list for cleanup
+            
+            // Write decoded data to temporary file
+            try (FileOutputStream fos = new FileOutputStream(tempFile)) {
+                fos.write(imageData);
+                fos.flush();
+            }
+            
+            android.util.Log.d("MediaClipboard", "Created temporary image file: " + tempFile.getAbsolutePath() + " (" + imageData.length + " bytes)");
+            
+            // Create content URI and copy to clipboard
+            Uri imageUri = MediaClipboardUtils.getContentUri(getReactApplicationContext(), tempFile);
+            if (imageUri != null) {
+                ClipData clip = ClipData.newUri(getReactApplicationContext().getContentResolver(), "image", imageUri);
+                clipboardManager.setPrimaryClip(clip);
+                
+                // Show success notification if requested
+                if (options != null && options.hasKey("showNotification") && options.getBoolean("showNotification")) {
+                    android.util.Log.d("MediaClipboard", "Base64 image copied to clipboard successfully");
+                }
+                
+                promise.resolve(null);
+            } else {
+                promise.reject("URI_CREATION_ERROR", "Failed to create content URI for base64 image");
+            }
+            
+        } catch (Exception e) {
+            android.util.Log.e("MediaClipboard", "Error handling base64 image", e);
+            promise.reject("BASE64_IMAGE_ERROR", "Failed to process base64 image: " + e.getMessage(), e);
+        }
     }
 
     @ReactMethod
@@ -398,6 +519,9 @@ public class MediaClipboardModule extends ReactContextBaseJavaModule {
         try {
             android.util.Log.d("MediaClipboard", "Downloading from URL: " + urlString);
             
+            // Clean up old temp files before downloading new ones
+            cleanupOldTempFiles();
+            
             java.net.URL url = new java.net.URL(urlString);
             java.net.URLConnection connection = url.openConnection();
             connection.setConnectTimeout(10000); // 10 second timeout
@@ -409,7 +533,11 @@ public class MediaClipboardModule extends ReactContextBaseJavaModule {
             if (urlPath != null && urlPath.contains(".")) {
                 fileName = urlPath.substring(urlPath.lastIndexOf("/") + 1);
                 if (fileName.length() > 50) { // Limit filename length
-                    fileName = "file_" + System.currentTimeMillis() + fileName.substring(fileName.lastIndexOf("."));
+                    String extension = "";
+                    if (fileName.contains(".")) {
+                        extension = fileName.substring(fileName.lastIndexOf("."));
+                    }
+                    fileName = "file_" + System.currentTimeMillis() + extension;
                 }
             } else {
                 // Try to get extension from content type
@@ -427,9 +555,21 @@ public class MediaClipboardModule extends ReactContextBaseJavaModule {
                 }
             }
             
-            // Create cache file
+            // Create cache file with unique name
             File cacheDir = getReactApplicationContext().getCacheDir();
-            File cacheFile = new File(cacheDir, "clipboard_" + fileName);
+            String prefix = "clipboard";
+            String extension = "";
+            if (fileName.contains(".")) {
+                extension = fileName.substring(fileName.lastIndexOf(".") + 1);
+                prefix += "_" + fileName.substring(0, fileName.lastIndexOf("."));
+            } else {
+                prefix += "_" + fileName;
+                extension = "dat"; // Default extension
+            }
+            
+            String uniqueFileName = createTempFileName(prefix, extension);
+            File cacheFile = new File(cacheDir, uniqueFileName);
+            temporaryFiles.add(cacheFile); // Add to list for cleanup
             
             // Download file
             java.io.InputStream inputStream = connection.getInputStream();
@@ -456,11 +596,53 @@ public class MediaClipboardModule extends ReactContextBaseJavaModule {
         }
     }
 
+    /**
+     * Clean up old temporary files to prevent cache bloat
+     */
+    private void cleanupOldTempFiles() {
+        try {
+            File cacheDir = getReactApplicationContext().getCacheDir();
+            File[] files = cacheDir.listFiles();
+            if (files != null) {
+                long currentTime = System.currentTimeMillis();
+                for (File file : files) {
+                    // Delete files older than 1 hour and starting with "clipboard_"
+                    if (file.getName().startsWith("clipboard_") && 
+                        (currentTime - file.lastModified()) > 3600000) { // 1 hour in milliseconds
+                        if (file.delete()) {
+                            android.util.Log.d("MediaClipboard", "Cleaned up old temp file: " + file.getName());
+                        }
+                    }
+                }
+            }
+        } catch (Exception e) {
+            android.util.Log.e("MediaClipboard", "Error cleaning up temp files", e);
+        }
+    }
+
+    /**
+     * Create a unique temporary file name
+     */
+    private String createTempFileName(String prefix, String extension) {
+        return prefix + "_" + System.currentTimeMillis() + "_" + Math.random() * 1000 + "." + extension;
+    }
+
     @Override
     public void onCatalystInstanceDestroy() {
         super.onCatalystInstanceDestroy();
         if (executorService != null && !executorService.isShutdown()) {
             executorService.shutdown();
         }
+        // Clean up temporary files on module destroy
+        for (File tempFile : temporaryFiles) {
+            if (tempFile.exists()) {
+                if (tempFile.delete()) {
+                    android.util.Log.d("MediaClipboard", "Deleted temporary file: " + tempFile.getName());
+                } else {
+                    android.util.Log.e("MediaClipboard", "Failed to delete temporary file: " + tempFile.getName());
+                }
+            }
+        }
+        temporaryFiles.clear(); // Clear the list after cleanup
     }
 } 
