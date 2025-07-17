@@ -643,9 +643,8 @@ public class MediaClipboardModule extends ReactContextBaseJavaModule {
         try {
             ContentResolver resolver = getReactApplicationContext().getContentResolver();
             
-            // For Android 10+ (API 29+), use the new MediaStore API
+            // For Android 10+ (API 29+), we stick with FileProvider as it's more secure
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI;
                 // For newer Android versions, we'll stick with FileProvider as it's more secure
                 return null;
             }
