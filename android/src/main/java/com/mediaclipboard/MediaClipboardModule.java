@@ -663,9 +663,22 @@ public class MediaClipboardModule extends ReactContextBaseJavaModule implements 
 
     /**
      * Enhanced method to create ClipData with better error handling and fallbacks
+     * Uses MediaStore for clipboard-compatible URIs to avoid "exposed beyond app" errors
      */
     private ClipData createClipDataForImage(Uri imageUri, String mimeType) {
         try {
+            // For clipboard operations, we need to use a different approach than FileProvider
+            // FileProvider URIs cause "exposed beyond app" errors when used in ClipData
+            
+            // Try to create a MediaStore URI for clipboard compatibility
+            Uri clipboardUri = createClipboardCompatibleUri(imageUri, mimeType);
+            if (clipboardUri != null) {
+                android.util.Log.d("MediaClipboard", "Using clipboard-compatible URI: " + clipboardUri.toString());
+                ClipData clip = ClipData.newUri(getReactApplicationContext().getContentResolver(), "image", clipboardUri);
+                return clip;
+            }
+            
+            // Fallback: Try the original approach with global permissions
             ClipData clip;
             
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
@@ -674,29 +687,17 @@ public class MediaClipboardModule extends ReactContextBaseJavaModule implements 
                 ClipDescription description = new ClipDescription("image", new String[]{mimeType != null ? mimeType : "image/*"});
                 clip = new ClipData(description, item);
                 
-                // Grant read permission to multiple potential clipboard consumers
+                // Grant global read permission for clipboard access
                 Context context = getReactApplicationContext();
-                int flags = Intent.FLAG_GRANT_READ_URI_PERMISSION;
-                
-                // Grant permissions to common clipboard and system processes
-                String[] clipboardPackages = {
-                    "com.android.systemui",     // System UI (clipboard)
-                    "android",                  // Android system
-                    "com.android.providers.media", // Media provider
-                    context.getPackageName()    // Our own app
-                };
-                
-                for (String packageName : clipboardPackages) {
-                    try {
-                        context.grantUriPermission(packageName, imageUri, flags);
-                        android.util.Log.d("MediaClipboard", "Granted URI permission to: " + packageName);
-                    } catch (Exception e) {
-                        android.util.Log.d("MediaClipboard", "Could not grant permission to " + packageName + ": " + e.getMessage());
-                    }
+                try {
+                    // Grant permission globally for clipboard system
+                    context.grantUriPermission("*", imageUri, Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                    android.util.Log.d("MediaClipboard", "Granted global URI permission for clipboard");
+                } catch (Exception e) {
+                    android.util.Log.w("MediaClipboard", "Could not grant global permission: " + e.getMessage());
                 }
                 
-                // ClipData created with proper MIME type and permissions
-                android.util.Log.d("MediaClipboard", "Created ClipData with URI: " + imageUri.toString());
+                android.util.Log.d("MediaClipboard", "Created ClipData with FileProvider URI: " + imageUri.toString());
                 
             } else {
                 // For older Android versions, use the standard approach
@@ -707,6 +708,139 @@ public class MediaClipboardModule extends ReactContextBaseJavaModule implements 
             
         } catch (Exception e) {
             android.util.Log.e("MediaClipboard", "Error creating ClipData", e);
+            return null;
+        }
+    }
+
+    /**
+     * Create a clipboard-compatible URI by copying the file to a publicly accessible location
+     * This avoids the "exposed beyond app" error with FileProvider URIs
+     */
+    private Uri createClipboardCompatibleUri(Uri originalUri, String mimeType) {
+        try {
+            Context context = getReactApplicationContext();
+            
+            // For Android 10+ (API 29+), we can use MediaStore to create public URIs
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                return createMediaStoreUriForClipboard(originalUri, mimeType);
+            }
+            
+            // For older versions, copy to external cache which is more accessible
+            return copyToExternalCacheForClipboard(originalUri, mimeType);
+            
+        } catch (Exception e) {
+            android.util.Log.e("MediaClipboard", "Failed to create clipboard-compatible URI", e);
+            return null;
+        }
+    }
+
+    /**
+     * Create a MediaStore URI for clipboard compatibility (Android 10+)
+     */
+    private Uri createMediaStoreUriForClipboard(Uri originalUri, String mimeType) {
+        try {
+            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
+                return null;
+            }
+            
+            Context context = getReactApplicationContext();
+            ContentResolver resolver = context.getContentResolver();
+            
+            // Read the original file
+            InputStream inputStream = resolver.openInputStream(originalUri);
+            if (inputStream == null) {
+                return null;
+            }
+            
+            // Create MediaStore entry
+            android.content.ContentValues values = new android.content.ContentValues();
+            values.put(MediaStore.Images.Media.DISPLAY_NAME, "clipboard_image_" + System.currentTimeMillis());
+            values.put(MediaStore.Images.Media.MIME_TYPE, mimeType != null ? mimeType : "image/jpeg");
+            values.put(MediaStore.Images.Media.RELATIVE_PATH, "Pictures/ClipboardMedia");
+            values.put(MediaStore.Images.Media.IS_PENDING, 1); // Mark as pending during write
+            
+            Uri mediaUri = resolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values);
+            if (mediaUri == null) {
+                inputStream.close();
+                return null;
+            }
+            
+            // Copy file content to MediaStore
+            try (java.io.OutputStream outputStream = resolver.openOutputStream(mediaUri)) {
+                if (outputStream != null) {
+                    byte[] buffer = new byte[8192];
+                    int bytesRead;
+                    while ((bytesRead = inputStream.read(buffer)) != -1) {
+                        outputStream.write(buffer, 0, bytesRead);
+                    }
+                }
+            }
+            
+            inputStream.close();
+            
+            // Mark as not pending
+            values.clear();
+            values.put(MediaStore.Images.Media.IS_PENDING, 0);
+            resolver.update(mediaUri, values, null, null);
+            
+            android.util.Log.d("MediaClipboard", "Created MediaStore URI for clipboard: " + mediaUri.toString());
+            return mediaUri;
+            
+        } catch (Exception e) {
+            android.util.Log.e("MediaClipboard", "Failed to create MediaStore URI", e);
+            return null;
+        }
+    }
+
+    /**
+     * Copy file to external cache for clipboard compatibility (Android < 10)
+     */
+    private Uri copyToExternalCacheForClipboard(Uri originalUri, String mimeType) {
+        try {
+            Context context = getReactApplicationContext();
+            ContentResolver resolver = context.getContentResolver();
+            
+            // Read the original file
+            InputStream inputStream = resolver.openInputStream(originalUri);
+            if (inputStream == null) {
+                return null;
+            }
+            
+            // Create file in external cache (more accessible than internal cache)
+            File externalCacheDir = context.getExternalCacheDir();
+            if (externalCacheDir == null) {
+                externalCacheDir = context.getCacheDir(); // Fallback to internal cache
+            }
+            
+            String extension = "jpg";
+            if (mimeType != null) {
+                if (mimeType.equals("image/png")) extension = "png";
+                else if (mimeType.equals("image/gif")) extension = "gif";
+                else if (mimeType.equals("image/webp")) extension = "webp";
+            }
+            
+            String fileName = "clipboard_" + System.currentTimeMillis() + "." + extension;
+            File clipboardFile = new File(externalCacheDir, fileName);
+            temporaryFiles.add(clipboardFile); // Track for cleanup
+            
+            // Copy file content
+            try (FileOutputStream outputStream = new FileOutputStream(clipboardFile)) {
+                byte[] buffer = new byte[8192];
+                int bytesRead;
+                while ((bytesRead = inputStream.read(buffer)) != -1) {
+                    outputStream.write(buffer, 0, bytesRead);
+                }
+            }
+            
+            inputStream.close();
+            
+            // Return file URI (acceptable for older Android versions)
+            Uri fileUri = Uri.fromFile(clipboardFile);
+            android.util.Log.d("MediaClipboard", "Created external cache URI for clipboard: " + fileUri.toString());
+            return fileUri;
+            
+        } catch (Exception e) {
+            android.util.Log.e("MediaClipboard", "Failed to copy to external cache", e);
             return null;
         }
     }

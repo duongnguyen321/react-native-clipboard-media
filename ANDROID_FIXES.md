@@ -161,6 +161,9 @@ MediaClipboard: Base64 image copied to clipboard successfully
 - [x] React Native app builds without Java compilation errors
 - [x] Base64 images copy successfully without "Image file not found" errors
 - [x] URL images download and copy without "exposed beyond app" errors
+- [x] MediaStore URIs used for clipboard compatibility (Android 10+)
+- [x] External cache fallback for older Android versions
+- [x] Proper permissions for MediaStore access
 - [x] No ClipDescription.setLabel() compilation errors
 - [x] No deprecated onCatalystInstanceDestroy() warnings
 - [x] Images can be pasted in other apps (messaging, etc.)

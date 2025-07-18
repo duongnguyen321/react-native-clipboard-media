@@ -3,6 +3,13 @@
 
   <!-- Permissions for reading external storage (optional) -->
   <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+  
+  <!-- Permission for writing to MediaStore (Android 10+) -->
+  <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" 
+    android:maxSdkVersion="28" />
+  
+  <!-- Permission for accessing media files (Android 13+) -->
+  <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
 
   <application>
     <!-- File provider for sharing files securely -->
