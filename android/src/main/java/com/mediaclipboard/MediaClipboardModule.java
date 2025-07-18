@@ -32,9 +32,8 @@ import android.util.Base64;
 import java.util.ArrayList;
 import java.util.List;
 import android.content.ClipDescription;
-import com.facebook.react.bridge.Invalidatable;
 
-public class MediaClipboardModule extends ReactContextBaseJavaModule implements Invalidatable {
+public class MediaClipboardModule extends ReactContextBaseJavaModule {
 
     private static final String MODULE_NAME = "MediaClipboard";
     private ClipboardManager clipboardManager;
@@ -845,7 +844,9 @@ public class MediaClipboardModule extends ReactContextBaseJavaModule implements 
         }
     }
 
-    @Override
+    /**
+     * Cleanup method called when the module is being destroyed
+     */
     public void invalidate() {
         if (executorService != null && !executorService.isShutdown()) {
             executorService.shutdown();

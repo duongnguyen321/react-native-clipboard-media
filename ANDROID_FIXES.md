@@ -55,8 +55,18 @@ android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI;
 **Solution:**
 
 - Replaced with `invalidate()` method
-- Added `Invalidatable` interface implementation
-- Updated class declaration: `implements Invalidatable`
+- Removed `Invalidatable` interface dependency (not available in all React Native versions)
+- Updated class declaration to remove `implements Invalidatable`
+
+#### 3.4 Missing Invalidatable Interface
+
+**Problem:** Attempted to import and implement `Invalidatable` interface that doesn't exist in some React Native versions.
+
+**Solution:**
+
+- Removed `import com.facebook.react.bridge.Invalidatable;`
+- Removed `implements Invalidatable` from class declaration
+- Kept `invalidate()` method as a regular cleanup method without interface implementation
 
 ## 🔧 Technical Implementation
 
@@ -176,6 +186,7 @@ MediaClipboard: Base64 image copied to clipboard successfully
 - ❌ `not a statement` compilation errors
 - ❌ `cannot find symbol: method setLabel`
 - ❌ `onCatalystInstanceDestroy() has been deprecated`
+- ❌ `cannot find symbol: class Invalidatable`
 
 ## 🚀 Usage
 
